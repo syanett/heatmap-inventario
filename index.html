@@ -648,8 +648,13 @@ async function loadFromGitHub() {
     if (hint) hint.textContent = `Descargando ${latest.name}…`;
     statusEl.textContent = `Descargando ${latest.name}…`;
 
-    const fileRes = await fetch(latest.download_url);
-    if (!fileRes.ok) throw new Error(`Error descargando archivo (${fileRes.status}): ${latest.download_url}`);
+    // Usa el Blob API (api.github.com) en vez de raw.githubusercontent.com
+    // para evitar el bloqueo CORS en archivos binarios (.xlsb/.xlsx)
+    const blobUrl = `https://api.github.com/repos/syanett/heatmap-inventario/git/blobs/${latest.sha}`;
+    const fileRes = await fetch(blobUrl, {
+      headers: { 'User-Agent': 'heatmap-inventario-dashboard', 'Accept': 'application/vnd.github.v3.raw' }
+    });
+    if (!fileRes.ok) throw new Error(`Error descargando archivo (${fileRes.status})`);
     const arrayBuffer = await fileRes.arrayBuffer();
     console.log('[GH] Descargado OK, bytes:', arrayBuffer.byteLength);
 
