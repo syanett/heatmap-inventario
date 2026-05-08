@@ -257,9 +257,13 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
 
 <div id="upload-zone">
   <div class="up-icon">📂</div>
-  <div class="up-text"><strong>Cargar archivo actualizado</strong><span>Herramienta de seguimiento SAP AAAA-MM-DD Col + Pan (.xlsb / .xlsx)</span></div>
+  <div class="up-text">
+    <strong>Seguimiento SAP — Inventario</strong>
+    <span id="gh-file-hint">Cargando desde GitHub…</span>
+  </div>
   <input type="file" id="file-input" accept=".xlsb,.xlsx,.xls">
-  <button id="upload-btn" onclick="document.getElementById('file-input').click()">Seleccionar archivo</button>
+  <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Cargar archivo manualmente" style="background:#f1f5f9;border:1px solid var(--border2);color:var(--text-muted);padding:7px 15px;border-radius:6px;font-family:var(--sans);font-weight:600;font-size:12px;cursor:pointer">📁 Manual</button>
+  <button id="gh-reload-btn" onclick="loadFromGitHub()" title="Recargar desde GitHub" style="background:#2563eb;border:none;color:#fff;padding:7px 15px;border-radius:6px;font-family:var(--sans);font-weight:600;font-size:12px;cursor:pointer">↻ Actualizar</button>
 </div>
 <div id="upload-status"></div>
 
@@ -611,15 +615,63 @@ zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
 zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)processFile(f)});
 inp.addEventListener('change',e=>{const f=e.target.files[0];if(f)processFile(f)});
 
+async function loadFromGitHub() {
+  const GITHUB_API = 'https://api.github.com/repos/syanett/heatmap-inventario/contents/';
+  const statusEl = document.getElementById('upload-status');
+  const loading = document.getElementById('loading');
+  const hint = document.getElementById('gh-file-hint');
+
+  try {
+    loading.classList.add('active');
+    if (hint) hint.textContent = 'Cargando desde GitHub…';
+    statusEl.textContent = 'Buscando archivo en GitHub…';
+    statusEl.style.color = 'var(--text-muted)';
+
+    const res = await fetch(GITHUB_API);
+    if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+    const files = await res.json();
+
+    const xlsFiles = files
+      .filter(f => /\.(xlsx|xlsb|xls)$/i.test(f.name) && /\d{4}[-_]\d{2}[-_]\d{2}/.test(f.name))
+      .sort((a, b) => b.name.localeCompare(a.name));
+
+    if (!xlsFiles.length) throw new Error('No se encontró ningún archivo .xlsx con fecha en el repositorio');
+
+    const latest = xlsFiles[0];
+    if (hint) hint.textContent = `Descargando ${latest.name}…`;
+    statusEl.textContent = `Descargando ${latest.name}…`;
+
+    const fileRes = await fetch(latest.download_url);
+    if (!fileRes.ok) throw new Error(`Error descargando archivo: ${fileRes.status}`);
+    const arrayBuffer = await fileRes.arrayBuffer();
+
+    const m = latest.name.match(/(\d{4})[_\-](\d{2})[_\-](\d{2})/);
+    FILE_DATE = m ? `${m[1]}-${m[2]}-${m[3]}` : new Date().toISOString().slice(0, 10);
+
+    if (hint) hint.textContent = `✓ ${latest.name} — cargado automáticamente`;
+    processArrayBuffer(arrayBuffer, latest.name);
+
+  } catch (err) {
+    loading.classList.remove('active');
+    if (hint) hint.textContent = 'No se pudo cargar desde GitHub — usa carga manual';
+    statusEl.style.color = '#d97706';
+    statusEl.textContent = `⚠ GitHub: ${err.message} — Carga el archivo manualmente`;
+  }
+}
+
 function processFile(file) {
   document.getElementById('loading').classList.add('active');
-  statusEl.textContent='';
-  const m=file.name.match(/(\d{4})[_\-](\d{2})[_\-](\d{2})/);
-  FILE_DATE=m?`${m[1]}-${m[2]}-${m[3]}`:new Date().toISOString().slice(0,10);
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try {
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellNF:false,cellDates:false});
+  document.getElementById('upload-status').textContent = '';
+  const m = file.name.match(/(\d{4})[_\-](\d{2})[_\-](\d{2})/);
+  FILE_DATE = m ? `${m[1]}-${m[2]}-${m[3]}` : new Date().toISOString().slice(0, 10);
+  const reader = new FileReader();
+  reader.onload = e => processArrayBuffer(e.target.result, file.name);
+  reader.readAsArrayBuffer(file);
+}
+
+function processArrayBuffer(buffer, fileName) {
+  try {
+      const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellNF:false,cellDates:false});
       const shH=wb.SheetNames.find(n=>n.toUpperCase()==='HERRAMIENTA');
       const shZ=wb.SheetNames.find(n=>n.toUpperCase()==='ZMATDATBAS');
       const sh1=wb.SheetNames.find(n=>n.trim()==='1000');
@@ -702,15 +754,13 @@ function processFile(file) {
       document.getElementById('file-date-label').textContent=`Archivo: ${FILE_DATE}`;
       document.getElementById('corte-fecha-value').textContent=FILE_DATE;
       document.getElementById('footer-ts').textContent=`Actualizado: ${FILE_DATE} · ${parsed.length.toLocaleString('es-CO')} SKUs`;
-      statusEl.textContent=`✓ ${file.name} — ${parsed.length.toLocaleString('es-CO')} SKUs`;
+      statusEl.textContent=`✓ ${fileName} — ${parsed.length.toLocaleString('es-CO')} SKUs`;
       statusEl.style.color='#059669';
       populateFilters(); rebuildAll();
-    } catch(err){
+  } catch(err){
       statusEl.style.color='#dc2626';
       statusEl.textContent='✗ Error: '+err.message;
-    } finally { document.getElementById('loading').classList.remove('active'); }
-  };
-  reader.readAsArrayBuffer(file);
+  } finally { document.getElementById('loading').classList.remove('active'); }
 }
 
 function populateFilters(){
@@ -1657,6 +1707,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('upload-status').textContent=`✓ Datos base ${FILE_DATE} cargados (${ALL_DATA.length.toLocaleString('es-CO')} SKUs). Suba archivo actualizado para refrescar.`;
   document.getElementById('upload-status').style.color='#059669';
   populateFilters();rebuildAll();
+});
+
+// Auto-cargar desde GitHub al abrir el dashboard
+window.addEventListener('DOMContentLoaded', () => {
+  loadFromGitHub();
 });
 </script>
 <script>
