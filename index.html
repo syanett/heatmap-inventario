@@ -627,23 +627,31 @@ async function loadFromGitHub() {
     statusEl.textContent = 'Buscando archivo en GitHub…';
     statusEl.style.color = 'var(--text-muted)';
 
-    const res = await fetch(GITHUB_API);
-    if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+    const apiHeaders = { 'User-Agent': 'heatmap-inventario-dashboard', 'Accept': 'application/vnd.github.v3+json' };
+    const res = await fetch(GITHUB_API, { headers: apiHeaders });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`GitHub API ${res.status}: ${body.slice(0, 120)}`);
+    }
     const files = await res.json();
+    console.log('[GH] Archivos en repo:', files.map(f => f.name));
 
-    const xlsFiles = files
-      .filter(f => /\.(xlsx|xlsb|xls)$/i.test(f.name) && /\d{4}[-_]\d{2}[-_]\d{2}/.test(f.name))
-      .sort((a, b) => b.name.localeCompare(a.name));
+    // Acepta cualquier .xlsx/.xlsb/.xls; prioriza los que tienen fecha en el nombre
+    const allXls = files.filter(f => f.type === 'file' && /\.(xlsx|xlsb|xls)$/i.test(f.name));
+    if (!allXls.length) throw new Error(`No hay archivos .xlsx/.xlsb en el repo. Archivos encontrados: ${files.map(f=>f.name).join(', ') || '(ninguno)'}`);
 
-    if (!xlsFiles.length) throw new Error('No se encontró ningún archivo .xlsx con fecha en el repositorio');
+    const withDate    = allXls.filter(f => /\d{4}[-_]\d{2}[-_]\d{2}/.test(f.name))
+                              .sort((a, b) => b.name.localeCompare(a.name));
+    const latest = withDate.length ? withDate[0] : allXls[allXls.length - 1];
+    console.log('[GH] Archivo seleccionado:', latest.name, latest.download_url);
 
-    const latest = xlsFiles[0];
     if (hint) hint.textContent = `Descargando ${latest.name}…`;
     statusEl.textContent = `Descargando ${latest.name}…`;
 
     const fileRes = await fetch(latest.download_url);
-    if (!fileRes.ok) throw new Error(`Error descargando archivo: ${fileRes.status}`);
+    if (!fileRes.ok) throw new Error(`Error descargando archivo (${fileRes.status}): ${latest.download_url}`);
     const arrayBuffer = await fileRes.arrayBuffer();
+    console.log('[GH] Descargado OK, bytes:', arrayBuffer.byteLength);
 
     const m = latest.name.match(/(\d{4})[_\-](\d{2})[_\-](\d{2})/);
     FILE_DATE = m ? `${m[1]}-${m[2]}-${m[3]}` : new Date().toISOString().slice(0, 10);
@@ -652,6 +660,7 @@ async function loadFromGitHub() {
     processArrayBuffer(arrayBuffer, latest.name);
 
   } catch (err) {
+    console.error('[GH] Error cargando desde GitHub:', err);
     loading.classList.remove('active');
     if (hint) hint.textContent = 'No se pudo cargar desde GitHub — usa carga manual';
     statusEl.style.color = '#d97706';
