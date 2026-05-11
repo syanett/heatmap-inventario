@@ -1347,6 +1347,22 @@ function getFilteredRows() {
   return rows;
 }
 
+// Aplica el filtro de búsqueda SKU (texto libre o lista pegada) sobre un array de rows.
+// Usado tanto por rebuildBreakdown() como por downloadReport() para que sean consistentes.
+function applySkuSearch(rows) {
+  const searchEl = document.getElementById('sku-search-input');
+  if (!searchEl) return rows;
+  if (SKU_LIST.size > 0) {
+    return rows.filter(d => d.cod && SKU_LIST.has(d.cod.trim()));
+  }
+  const q = searchEl.value.trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter(d =>
+    (d.cod && d.cod.toLowerCase().includes(q)) ||
+    (d.mat && d.mat.toLowerCase().includes(q))
+  );
+}
+
 function rebuildBreakdown(){
   const cont = document.getElementById('breakdown-container');
   if (!ALL_DATA.length) { cont.innerHTML = '<p class="empty-msg">Cargue un archivo</p>'; return; }
@@ -1355,27 +1371,18 @@ function rebuildBreakdown(){
   let rows = sortRows(getFilteredRows());
 
   // ── SKU search filter ──────────────────────────────────────────
-  const searchEl = document.getElementById('sku-search-input');
   const hint = document.getElementById('sku-search-hint');
-  if (searchEl) {
-    const before = rows.length;
+  const before = rows.length;
+  rows = applySkuSearch(rows);
+  if (hint) {
     if (SKU_LIST.size > 0) {
-      // Modo lista: coincidencia exacta contra conjunto de códigos
-      rows = rows.filter(d => d.cod && SKU_LIST.has(d.cod.trim()));
       const found = rows.length;
       const notFound = SKU_LIST.size - found;
-      if (hint) hint.textContent = `${found.toLocaleString('es-CO')} encontrados · ${notFound > 0 ? notFound + ' no hallados' : 'todos hallados'}`;
+      hint.textContent = `${found.toLocaleString('es-CO')} encontrados · ${notFound > 0 ? notFound + ' no hallados' : 'todos hallados'}`;
     } else {
-      const q = searchEl.value.trim().toLowerCase();
-      if (q) {
-        rows = rows.filter(d =>
-          (d.cod && d.cod.toLowerCase().includes(q)) ||
-          (d.mat && d.mat.toLowerCase().includes(q))
-        );
-        if (hint) hint.textContent = `${rows.length.toLocaleString('es-CO')} de ${before.toLocaleString('es-CO')} SKUs`;
-      } else {
-        if (hint) hint.textContent = '';
-      }
+      const searchEl = document.getElementById('sku-search-input');
+      const q = searchEl ? searchEl.value.trim() : '';
+      hint.textContent = q ? `${rows.length.toLocaleString('es-CO')} de ${before.toLocaleString('es-CO')} SKUs` : '';
     }
   }
   // ──────────────────────────────────────────────────────────────
@@ -1592,7 +1599,7 @@ function showTipN(e, el){
 
 // ── DOWNLOAD REPORT ───────────────────────────────────────────────
 function downloadReport() {
-  const rows = getFilteredRows();
+  const rows = applySkuSearch(sortRows(getFilteredRows()));
   if (!rows.length) { alert('No hay SKUs con los filtros actuales.'); return; }
 
   const IRD_RANGE = ['Rot. Lenta (0–0.3)','Rot. Media (0.3–1]','Rot. Alta (1–2]','Ultra (>2)'];
