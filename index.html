@@ -999,6 +999,14 @@ function buildHeatmap(data){
   buildLegend();
 }
 
+// Categoría extendida para el vector N:
+// devuelve '0d' cuando ddiCat='Agotado' pero hay ≥1 unidad en inventario
+function nVectorCat(d) {
+  const cat = ddiCat(d.ddi);
+  if (cat === 'Agotado' && (d.dispo || 0) >= 1) return '0d';
+  return cat;
+}
+
 // ── N VECTOR — full heatmap parity ───────────────────────────────
 function buildNVector(data){
   const cont  = document.getElementById('n-vector-container');
@@ -1006,31 +1014,33 @@ function buildNVector(data){
   badge.textContent = data.length.toLocaleString('es-CO') + ' SKUs totales';
   if (!data.length) { cont.innerHTML = '<p class="empty-msg" style="font-size:11px">–</p>'; buildNLegend(); return; }
 
-  const N_CATS = ['1-15','16-30','31-60','61-90','90+'];
-  // Build per-cell aggregates: count, dispo, vol, costo, estibas
+  // '0d' = DDI≤0 pero con ≥1 unidad; el resto son rangos normales
+  const N_CATS = ['0d','1-15','16-30','31-60','61-90','90+'];
   const mCount={}, mDispo={}, mVol={}, mCosto={}, mEstibas={};
   N_CATS.forEach(c => { mCount[c]=0; mDispo[c]=0; mVol[c]=0; mCosto[c]=0; mEstibas[c]=0; });
 
+  let sinStock = 0; // Agotado real: sin inventario
   for (const d of data) {
-    const cat = ddiCat(d.ddi);
-    if (cat === 'Agotado' || !(cat in mCount)) continue;
+    const cat = nVectorCat(d);
+    if (!(cat in mCount)) { sinStock++; continue; }
     mCount[cat]++;
-    mDispo[cat] += d.dispo || 0;
-    mVol[cat]   += (d.dispo || 0) * (d.vol || 0);
-    mCosto[cat] += (d.dispo || 0) * (d.costo || 0);
+    mDispo[cat]   += d.dispo || 0;
+    mVol[cat]     += (d.dispo || 0) * (d.vol || 0);
+    mCosto[cat]   += (d.dispo || 0) * (d.costo || 0);
     mEstibas[cat] += (d.estibas || 0);
   }
 
   const vals   = N_CATS.map(c => mCount[c]);
-  const maxVal = Math.max(...vals, 1);
+  const allMax = Math.max(...vals, 1);
+  const maxRed = Math.max(...vals.slice(1), 1); // escala roja sin '0d'
   const total  = vals.reduce((a,b) => a+b, 0);
-  const agot   = data.filter(d => ddiCat(d.ddi) === 'Agotado').length;
 
   let html = `<table class="hm-table"><thead><tr>
     <th class="row-label" style="min-width:90px;padding-right:8px">
       <span style="color:#b91c1c;font-size:9px;letter-spacing:1px">EVACUACIÓN \\ DDI</span>
-    </th>`;
-  for (const c of N_CATS) {
+    </th>
+    <th class="ddi-header" style="color:#d97706">⚠ 0 d<br><span style="font-size:8px;font-weight:400;color:#d97706">con stock</span></th>`;
+  for (const c of N_CATS.slice(1)) {
     html += `<th class="ddi-header" style="color:#b91c1c">${c} d</th>`;
   }
   html += `</tr></thead><tbody><tr>
@@ -1039,9 +1049,29 @@ function buildNVector(data){
       <br><span style="color:var(--text-muted);font-size:9px">Estado N</span>
     </th>`;
 
-  for (const cat of N_CATS) {
+  // Celda especial: DDI=0 con stock (ámbar)
+  {
+    const val = mCount['0d'];
+    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+    const t   = Math.min(val / allMax, 1);
+    const bg  = val > 0 ? blend('#fffbeb','#d97706',t) : '#f8fafc';
+    const fg  = val > 0 ? (t > 0.5 ? '#fff' : '#92400e') : '#cbd5e1';
+    html += `<td class="hm-cell"
+      style="background:${bg};color:${fg};border:2px solid ${val>0?'#d97706':'transparent'}"
+      data-val="${val}" data-ddi="0d" data-pct="${pct}"
+      data-dispo="${mDispo['0d']}" data-vol="${mVol['0d'].toFixed(2)}" data-costo="${mCosto['0d'].toFixed(0)}" data-estibas="${mEstibas['0d'].toFixed(1)}"
+      onmouseenter="showTipN(event,this)" onmouseleave="hideTip()"
+      onclick="drillDownN('0d',event)">
+      ${val > 0 ? val.toLocaleString('es-CO') : '<span style="opacity:.25">—</span>'}
+      ${val > 0 ? `<span class="cell-pct">${pct}%</span>` : ''}
+      ${val > 0 ? `<span class="focus-tag focus-tag-evac">● EVACUAR</span>` : ''}
+    </td>`;
+  }
+
+  // Celdas regulares: rangos DDI (escala roja)
+  for (const cat of N_CATS.slice(1)) {
     const val = mCount[cat];
-    const c   = nRedColor(val, maxVal);
+    const c   = nRedColor(val, maxRed);
     const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
     html += `<td class="hm-cell"
       style="background:${c.bg};color:${c.fg};border:2px solid ${val>0?'#dc2626':'transparent'}"
@@ -1054,10 +1084,11 @@ function buildNVector(data){
       ${val > 0 ? `<span class="focus-tag focus-tag-evac">● EVACUAR</span>` : ''}
     </td>`;
   }
+
   html += `</tr></tbody></table>`;
-  if (agot > 0) {
+  if (sinStock > 0) {
     html += `<div style="margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--text-muted)">
-      <span style="color:#ef4444">●</span> ${agot.toLocaleString('es-CO')} SKUs inactivos sin inventario (no incluidos en el vector)
+      <span style="color:#ef4444">●</span> ${sinStock.toLocaleString('es-CO')} SKUs inactivos sin inventario (no incluidos en el vector)
     </div>`;
   }
   cont.innerHTML = html;
@@ -1069,7 +1100,9 @@ function buildNLegend(){
   if (!row) return;
   row.innerHTML = `
     <div class="legend-item"><div class="legend-swatch" style="background:#f8fafc;border:1px solid #e2e6ed"></div>0 SKUs</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#fca5a5"></div>Evacuación (bajo)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fde68a"></div>DDI 0 con stock (bajo)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#d97706"></div>DDI 0 con stock (alto)</div>
+    <div class="legend-item" style="margin-left:6px"><div class="legend-swatch" style="background:#fca5a5"></div>Evacuación (bajo)</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#dc2626"></div>Evacuación (alto)</div>
     <div class="legend-item" style="margin-left:auto;font-size:10px;color:var(--text-muted)">· Clic en celda → filtrar detalle</div>`;
 }
@@ -1278,7 +1311,7 @@ function getFilteredRows() {
       const nBase = ALL_DATA.filter(d => d.estado === 'N');
       const fCatN = document.getElementById('filter-cat-n').value;
       const fSubN = document.getElementById('filter-sub-n').value;
-      let nFiltered = nBase.filter(d => SELECTED_N_CELLS.has(ddiCat(d.ddi)));
+      let nFiltered = nBase.filter(d => SELECTED_N_CELLS.has(nVectorCat(d)));
       if (fCatN) nFiltered = nFiltered.filter(d => d.cat === fCatN);
       if (fSubN) nFiltered = nFiltered.filter(d => d.sub === fSubN);
       rows = rows.concat(nFiltered);
@@ -1537,9 +1570,14 @@ function showTipN(e, el){
   const vol   = Number(el.dataset.vol);
   const costo = Number(el.dataset.costo);
   const estibas = Number(el.dataset.estibas||0);
+  const ddiLabel = ddi === '0d' ? '0 días (con stock)' : ddi + ' días';
+  const ddiNote  = ddi === '0d'
+    ? `<div class="tip-row" style="margin-top:2px"><span style="color:#d97706;font-size:10px">⚠ DDI calculado en 0 pero tiene unidades</span></div>`
+    : '';
   tipEl.innerHTML = `
     <div class="tip-head">${val.toLocaleString('es-CO')} SKUs · ${pct}% del total N</div>
-    <div class="tip-row"><span class="tip-label">DDI</span><span class="tip-val">${ddi} días</span></div>
+    <div class="tip-row"><span class="tip-label">DDI</span><span class="tip-val">${ddiLabel}</span></div>
+    ${ddiNote}
     <div class="tip-div"></div>
     <div class="tip-row"><span class="tip-label">Unidades inv.</span><span class="tip-val">${fmtNum(dispo)} uds</span></div>
     <div class="tip-row"><span class="tip-label">Estibas</span><span class="tip-val">${estibas.toFixed(1)}</span></div>
