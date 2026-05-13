@@ -181,6 +181,21 @@ header{border-bottom:1px solid var(--border);padding:18px 32px;display:flex;alig
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mono);font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;margin-top:28px;background:var(--surface)}
 
+/* ── SWITCH "SOLO ACTIVOS" ───────────────────────────────────────── */
+.activos-switch-wrap{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:7px;border:1.5px solid var(--border2);background:var(--surface);cursor:pointer;user-select:none;transition:all .15s;}
+.activos-switch-wrap:hover{border-color:var(--accent);background:#eff6ff;}
+.activos-switch-wrap.on{border-color:#059669;background:#f0fdf4;box-shadow:0 0 0 3px rgba(5,150,105,.12);}
+.sw-toggle{position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0}
+.sw-toggle input{opacity:0;width:0;height:0;position:absolute}
+.sw-slider{position:absolute;inset:0;background:#d0d5de;border-radius:18px;transition:.2s;cursor:pointer}
+.sw-slider::before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.sw-toggle input:checked + .sw-slider{background:#059669}
+.sw-toggle input:checked + .sw-slider::before{transform:translateX(16px)}
+.sw-label{font-size:11px;font-weight:700;font-family:var(--sans);color:var(--text-muted)}
+.activos-switch-wrap.on .sw-label{color:#059669}
+.sw-count{font-family:var(--mono);font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:#d1fae5;color:#065f46;display:none}
+.activos-switch-wrap.on .sw-count{display:inline-block}
+
 /* ── ACCUMULATED CELL SELECTION ─────────────────────────────────── */
 .hm-cell.selected-aot{outline:3px solid #2563eb!important;outline-offset:-2px;z-index:15;}
 .hm-cell.selected-n{outline:3px solid #b91c1c!important;outline-offset:-2px;z-index:15;}
@@ -278,6 +293,18 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
 </div>
 
 <div class="focus-legend">
+  <!-- Switch: Solo SKUs activos (IRD≠0 y col R o col BR > 0) -->
+  <div class="activos-switch-wrap" id="activos-switch-wrap"
+       onclick="toggleActivosSwitch()"
+       title="Oculta SKUs sin movimiento (IRD=0) y sin disponibilidad ni entregas entrantes (col. R y BR = 0)">
+    <label class="sw-toggle" onclick="event.stopPropagation()">
+      <input type="checkbox" id="activos-switch" onchange="toggleActivosSwitch()">
+      <span class="sw-slider"></span>
+    </label>
+    <span class="sw-label">Solo activos</span>
+    <span class="sw-count" id="sw-count">–</span>
+  </div>
+
   <div class="focus-chip evac" id="focus-chip-evac" onclick="toggleFocusChip('evac')">
     <span class="fc-chip-icon">🔴</span>
     <span class="fc-chip-label">Evacuación</span>
@@ -541,6 +568,28 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
 let ALL_DATA = [];
 let FILE_DATE = '–';
 let ACTIVE_ESTADOS = new Set(['A','O','T']);
+let SWITCH_ACTIVOS = false; // true = solo SKUs con IRD≠0 y (colR>0 o colBR>0)
+
+// Devuelve false si el switch está activo y el SKU no cumple los criterios:
+// movimiento (IRD≠0) y al menos disponibilidad o entregas entrantes (col R o col BR)
+function passesActivoSwitch(d) {
+  if (!SWITCH_ACTIVOS) return true;
+  const hasMovement = d.ird !== null && d.ird !== 0;
+  const hasStock    = (d.colR || 0) > 0 || (d.colBR || 0) > 0;
+  return hasMovement && hasStock;
+}
+
+function toggleActivosSwitch() {
+  const cb  = document.getElementById('activos-switch');
+  const wrap = document.getElementById('activos-switch-wrap');
+  SWITCH_ACTIVOS = cb.checked;
+  wrap.classList.toggle('on', SWITCH_ACTIVOS);
+  rebuildAll();
+  // Actualizar el contador del badge
+  const visible = ALL_DATA.filter(passesActivoSwitch).length;
+  const badge = document.getElementById('sw-count');
+  if (badge) badge.textContent = visible.toLocaleString('es-CO') + ' SKUs';
+}
 
 const DDI_CATS   = ['Agotado','1-15','16-30','31-60','61-90','90+'];
 const IRD_LABELS = ['Rot. Lenta (0–0.3)','Rot. Media (0.3–1]','Rot. Alta (1–2]','Ultra (>2)'];
@@ -751,6 +800,9 @@ function processArrayBuffer(buffer, fileName) {
         const gf=idx=>{if(idx<0||idx>=row.length)return null;const v=row[idx];if(v==null)return null;const n=Number(v);return isNaN(n)?null:n;};
         const gs=idx=>{if(idx<0||idx>=row.length)return'';const v=row[idx];return v!=null?String(v).trim():''};
         const origRaw=gs(iOrigen).toUpperCase();
+        // Col R (índice 17) = disponibilidad; Col BR (índice 69) = entregas entrantes
+        const colR  = row.length > 17 ? (Number(row[17]) || 0) : 0;
+        const colBR = row.length > 69 ? (Number(row[69]) || 0) : 0;
         parsed.push({
           estado,cod,
           mat:gs(iMat),marca:gs(iMarca),prov:gs(iProv),
@@ -761,6 +813,7 @@ function processArrayBuffer(buffer, fileName) {
           vol:z.vol||0,
           costo:kLookup[cod]||0,
           estibas:iCP>=0?Number(gf(iCP)||0):0,
+          colR, colBR,
         });
       }
       if(!parsed.length) throw new Error('No se encontraron filas válidas');
@@ -825,8 +878,8 @@ function rebuildAll(){
   const fCatN = document.getElementById('filter-cat-n').value;
   const fSubN = document.getElementById('filter-sub-n').value;
 
-  let aot = ALL_DATA.filter(d => ACTIVE_ESTADOS.has(d.estado));
-  let n   = ALL_DATA.filter(d => d.estado === 'N');
+  let aot = ALL_DATA.filter(d => ACTIVE_ESTADOS.has(d.estado)).filter(passesActivoSwitch);
+  let n   = ALL_DATA.filter(d => d.estado === 'N').filter(passesActivoSwitch);
 
   if (fCat)  aot = aot.filter(d => d.cat === fCat);
   if (fSub)  aot = aot.filter(d => d.sub === fSub);
@@ -1317,7 +1370,8 @@ function getFilteredRows() {
       rows = rows.concat(nFiltered);
     }
 
-    // Apply table-level multiselect filters on top
+    // Apply switch + table-level multiselect filters on top
+    rows = rows.filter(passesActivoSwitch);
     rows = rows.filter(d => msPassFilter('orig', d.origen || ''));
     rows = rows.filter(d => msPassFilter('cat2', d.cat || ''));
     rows = rows.filter(d => msPassFilter('sub2', d.sub || ''));
@@ -1327,6 +1381,7 @@ function getFilteredRows() {
   let rows = estActive
     ? ALL_DATA.filter(d => MS_STATE.est.vals.has(d.estado))
     : ALL_DATA.filter(d => ACTIVE_ESTADOS.has(d.estado));
+  rows = rows.filter(passesActivoSwitch);
 
   // Heatmap-level cat/sub (single-select, AOT only — skip if N is selected via est)
   if (!estActive) {
