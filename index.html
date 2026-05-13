@@ -301,7 +301,7 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
       <input type="checkbox" id="activos-switch" onchange="toggleActivosSwitch()">
       <span class="sw-slider"></span>
     </label>
-    <span class="sw-label">Solo activos</span>
+    <span class="sw-label">Solo en tránsito</span>
     <span class="sw-count" id="sw-count">–</span>
   </div>
 
@@ -1380,7 +1380,7 @@ function getFilteredRows() {
 
   let rows = estActive
     ? ALL_DATA.filter(d => MS_STATE.est.vals.has(d.estado))
-    : ALL_DATA.filter(d => ACTIVE_ESTADOS.has(d.estado));
+    : ALL_DATA.slice(); // por defecto muestra A, O, T y N
   rows = rows.filter(passesActivoSwitch);
 
   // Heatmap-level cat/sub (single-select, AOT only — skip if N is selected via est)
