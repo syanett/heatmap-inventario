@@ -136,6 +136,9 @@ header{border-bottom:1px solid var(--border);padding:18px 32px;display:flex;alig
 .ms-item.checked{color:var(--accent);font-weight:600}
 .ms-divider{height:1px;background:var(--border);margin:3px 0}
 .ms-all{font-weight:600;color:var(--text-muted)}
+.ms-search-wrap{padding:4px 6px 3px;border-bottom:1px solid var(--border)}
+.ms-search{width:100%;box-sizing:border-box;border:1px solid var(--border2);border-radius:3px;padding:3px 6px;font-family:var(--mono);font-size:10px;background:var(--surface);color:var(--text);outline:none}
+.ms-search:focus{border-color:var(--accent)}
 
 /* Sort buttons in table header */
 .sort-btn{background:none;border:none;cursor:pointer;padding:0 0 0 4px;color:var(--text-dim);font-size:10px;vertical-align:middle;line-height:1;transition:color .1s}
@@ -349,9 +352,14 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
   <div class="panel">
     <div class="panel-header">
       <span class="panel-title">Heatmap DDI × IRD</span>
-      <select class="filter-select" id="filter-cat" onchange="rebuildAll()"><option value="">Todas las categorías</option></select>
-      <select class="filter-select" id="filter-sub" onchange="rebuildAll()"><option value="">Todas las sublíneas</option></select>
-      <select class="filter-select" id="filter-prov" onchange="rebuildAll()"><option value="">Todos los proveedores</option></select>
+      <span class="filter-label">Categoría:</span>
+      <div class="ms-wrap" id="ms-wrap-hm_cat"><button class="ms-btn" id="ms-btn-hm_cat" onclick="toggleMs('hm_cat')" style="min-width:90px">Todas</button><div class="ms-dropdown" id="ms-drop-hm_cat"></div></div>
+      <span class="filter-label">Línea:</span>
+      <div class="ms-wrap" id="ms-wrap-hm_lin"><button class="ms-btn" id="ms-btn-hm_lin" onclick="toggleMs('hm_lin')" style="min-width:80px">Todas</button><div class="ms-dropdown" id="ms-drop-hm_lin"></div></div>
+      <span class="filter-label">Sublínea:</span>
+      <div class="ms-wrap" id="ms-wrap-hm_sub"><button class="ms-btn" id="ms-btn-hm_sub" onclick="toggleMs('hm_sub')" style="min-width:90px">Todas</button><div class="ms-dropdown" id="ms-drop-hm_sub"></div></div>
+      <span class="filter-label">Proveedor:</span>
+      <div class="ms-wrap" id="ms-wrap-hm_prov"><button class="ms-btn" id="ms-btn-hm_prov" onclick="toggleMs('hm_prov')" style="min-width:90px">Todos</button><div class="ms-dropdown" id="ms-drop-hm_prov"></div></div>
       <div style="display:flex;align-items:center;gap:6px">
         <span style="font-size:10px;color:var(--text-muted);font-family:var(--mono)">Estado:</span>
         <div class="estado-toggle-group" id="estado-toggle">
@@ -371,9 +379,14 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
     <div class="panel-header">
       <span class="panel-title">Inactivos — Estado N</span>
       <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">Distribución DDI · todos son foco de evacuación</span>
-      <select class="filter-select" id="filter-cat-n" onchange="rebuildAll()" style="margin-left:8px"><option value="">Todas las categorías</option></select>
-      <select class="filter-select" id="filter-sub-n" onchange="rebuildAll()"><option value="">Todas las sublíneas</option></select>
-      <select class="filter-select" id="filter-prov-n" onchange="rebuildAll()"><option value="">Todos los proveedores</option></select>
+      <span class="filter-label">Línea:</span>
+      <div class="ms-wrap" id="ms-wrap-lin_n"><button class="ms-btn" id="ms-btn-lin_n" onclick="toggleMs('lin_n')" style="min-width:80px">Todas</button><div class="ms-dropdown" id="ms-drop-lin_n"></div></div>
+      <span class="filter-label">Categoría:</span>
+      <div class="ms-wrap" id="ms-wrap-cat_n"><button class="ms-btn" id="ms-btn-cat_n" onclick="toggleMs('cat_n')" style="min-width:90px">Todas</button><div class="ms-dropdown" id="ms-drop-cat_n"></div></div>
+      <span class="filter-label">Sublínea:</span>
+      <div class="ms-wrap" id="ms-wrap-sub_n"><button class="ms-btn" id="ms-btn-sub_n" onclick="toggleMs('sub_n')" style="min-width:90px">Todas</button><div class="ms-dropdown" id="ms-drop-sub_n"></div></div>
+      <span class="filter-label">Proveedor:</span>
+      <div class="ms-wrap" id="ms-wrap-prov_n"><button class="ms-btn" id="ms-btn-prov_n" onclick="toggleMs('prov_n')" style="min-width:90px">Todos</button><div class="ms-dropdown" id="ms-drop-prov_n"></div></div>
       <span class="panel-badge" style="margin-left:auto" id="n-count-badge">0 SKUs</span>
     </div>
     <div style="padding:14px 18px" id="n-vector-container"><p class="empty-msg" style="font-size:11px">–</p></div>
@@ -521,6 +534,11 @@ footer{border-top:1px solid var(--border);padding:12px 32px;font-family:var(--mo
       <div class="ms-wrap" id="ms-wrap-cat2">
         <button class="ms-btn" id="ms-btn-cat2" onclick="toggleMs('cat2')">Todas</button>
         <div class="ms-dropdown" id="ms-drop-cat2"></div>
+      </div>
+      <span class="filter-label">Línea:</span>
+      <div class="ms-wrap" id="ms-wrap-lin2">
+        <button class="ms-btn" id="ms-btn-lin2" onclick="toggleMs('lin2')">Todas</button>
+        <div class="ms-dropdown" id="ms-drop-lin2"></div>
       </div>
       <span class="filter-label">Sublínea:</span>
       <div class="ms-wrap" id="ms-wrap-sub2">
@@ -848,44 +866,31 @@ function processArrayBuffer(buffer, fileName) {
 function populateFilters(){
   const aot  = ALL_DATA.filter(d => ['A','O','T'].includes(d.estado));
   const nAll = ALL_DATA.filter(d => d.estado === 'N');
-  const cats = [...new Set(aot.map(d=>d.cat).filter(Boolean))].sort();
-  const subs = [...new Set(aot.map(d=>d.sub).filter(Boolean))].sort();
-  const provs = [...new Set(ALL_DATA.map(d=>d.prov).filter(Boolean))].sort();
-  const provsAot = [...new Set(aot.map(d=>d.prov).filter(Boolean))].sort();
-  const catsN = [...new Set(nAll.map(d=>d.cat).filter(Boolean))].sort();
-  const subsN = [...new Set(nAll.map(d=>d.sub).filter(Boolean))].sort();
+  const lins   = [...new Set(ALL_DATA.map(d=>d.lin).filter(Boolean))].sort();
+  const cats   = [...new Set(aot.map(d=>d.cat).filter(Boolean))].sort();
+  const subs   = [...new Set(aot.map(d=>d.sub).filter(Boolean))].sort();
+  const provs  = [...new Set(ALL_DATA.map(d=>d.prov).filter(Boolean))].sort();
+  const linsN  = [...new Set(nAll.map(d=>d.lin).filter(Boolean))].sort();
+  const catsN  = [...new Set(nAll.map(d=>d.cat).filter(Boolean))].sort();
+  const subsN  = [...new Set(nAll.map(d=>d.sub).filter(Boolean))].sort();
   const provsN = [...new Set(nAll.map(d=>d.prov).filter(Boolean))].sort();
 
-  // Heatmap A/O/T dropdowns
-  const fCat = document.getElementById('filter-cat');
-  fCat.innerHTML = '<option value="">Todas las categorías</option>';
-  cats.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; fCat.appendChild(o); });
-  const fSub = document.getElementById('filter-sub');
-  fSub.innerHTML = '<option value="">Todas las sublíneas</option>';
-  subs.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; fSub.appendChild(o); });
-  const fProv = document.getElementById('filter-prov');
-  fProv.innerHTML = '<option value="">Todos los proveedores</option>';
-  provsAot.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; fProv.appendChild(o); });
+  populateMsDynamic('lin2',   lins,   null, false);
+  populateMsDynamic('cat2',   cats,   null, false);
+  populateMsDynamic('sub2',   subs,   null, true);
+  populateMsDynamic('prov2',  provs,  null, true);
+  populateMsDynamic('lin_n',  linsN,  null, false);
+  populateMsDynamic('cat_n',  catsN,  null, false);
+  populateMsDynamic('sub_n',  subsN,  null, true);
+  populateMsDynamic('prov_n', provsN, null, true);
+  populateMsDynamic('hm_cat', cats,   null, false);
+  populateMsDynamic('hm_lin', lins,   null, false);
+  populateMsDynamic('hm_sub', subs,   null, true);
+  populateMsDynamic('hm_prov',provs,  null, true);
 
-  // N panel dropdowns
-  const fCatN = document.getElementById('filter-cat-n');
-  fCatN.innerHTML = '<option value="">Todas las categorías</option>';
-  catsN.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; fCatN.appendChild(o); });
-  const fSubN = document.getElementById('filter-sub-n');
-  fSubN.innerHTML = '<option value="">Todas las sublíneas</option>';
-  subsN.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; fSubN.appendChild(o); });
-  const fProvN = document.getElementById('filter-prov-n');
-  fProvN.innerHTML = '<option value="">Todos los proveedores</option>';
-  provsN.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; fProvN.appendChild(o); });
-
-  // Table-level multiselect dropdowns
-  populateMsDynamic('cat2', cats, null);
-  populateMsDynamic('sub2', subs, null);
-  populateMsDynamic('prov2', provs, null);
-  MS_STATE.cat2.all  = true; MS_STATE.cat2.vals.clear();
-  MS_STATE.sub2.all  = true; MS_STATE.sub2.vals.clear();
-  MS_STATE.prov2.all = true; MS_STATE.prov2.vals.clear();
-  msUpdateLabel('cat2'); msUpdateLabel('sub2'); msUpdateLabel('prov2');
+  ['lin2','cat2','sub2','prov2','lin_n','cat_n','sub_n','prov_n','hm_cat','hm_lin','hm_sub','hm_prov'].forEach(k => {
+    MS_STATE[k].all = true; MS_STATE[k].vals.clear(); msUpdateLabel(k);
+  });
 }
 
 function toggleEstado(e){
@@ -899,22 +904,21 @@ function toggleEstado(e){
 }
 
 function rebuildAll(){
-  const fCat  = document.getElementById('filter-cat').value;
-  const fSub  = document.getElementById('filter-sub').value;
-  const fProv = document.getElementById('filter-prov').value;
-  const fCatN = document.getElementById('filter-cat-n').value;
-  const fSubN = document.getElementById('filter-sub-n').value;
-  const fProvN = document.getElementById('filter-prov-n').value;
-
   let aot = ALL_DATA.filter(d => ACTIVE_ESTADOS.has(d.estado)).filter(passesActivoSwitch);
-  let n   = ALL_DATA.filter(d => d.estado === 'N').filter(passesActivoSwitch);
+  aot = aot.filter(d => msPassFilter('lin2',   d.lin  || ''));
+  aot = aot.filter(d => msPassFilter('cat2',   d.cat  || ''));
+  aot = aot.filter(d => msPassFilter('sub2',   d.sub  || ''));
+  aot = aot.filter(d => msPassFilter('prov2',  d.prov || ''));
+  aot = aot.filter(d => msPassFilter('hm_cat', d.cat  || ''));
+  aot = aot.filter(d => msPassFilter('hm_lin', d.lin  || ''));
+  aot = aot.filter(d => msPassFilter('hm_sub', d.sub  || ''));
+  aot = aot.filter(d => msPassFilter('hm_prov',d.prov || ''));
 
-  if (fCat)  aot = aot.filter(d => d.cat  === fCat);
-  if (fSub)  aot = aot.filter(d => d.sub  === fSub);
-  if (fProv) aot = aot.filter(d => d.prov === fProv);
-  if (fCatN)  n  = n.filter(d => d.cat  === fCatN);
-  if (fSubN)  n  = n.filter(d => d.sub  === fSubN);
-  if (fProvN) n  = n.filter(d => d.prov === fProvN);
+  let n = ALL_DATA.filter(d => d.estado === 'N').filter(passesActivoSwitch);
+  n = n.filter(d => msPassFilter('lin_n',  d.lin  || ''));
+  n = n.filter(d => msPassFilter('cat_n',  d.cat  || ''));
+  n = n.filter(d => msPassFilter('sub_n',  d.sub  || ''));
+  n = n.filter(d => msPassFilter('prov_n', d.prov || ''));
 
   updateStats(aot, n);
   buildHeatmap(aot);
@@ -955,7 +959,8 @@ function toggleFocusChip(foc) {
 }
 
 function clearAllFilters() {
-  ['ddi','ird','foco','orig','cat2','sub2','prov2','est'].forEach(key => {
+  // 1. Reset all multiselect states
+  ['ddi','ird','foco','orig','lin2','cat2','sub2','prov2','lin_n','cat_n','sub_n','prov_n','hm_cat','hm_lin','hm_sub','hm_prov','est'].forEach(key => {
     MS_STATE[key].all = true;
     MS_STATE[key].vals.clear();
     document.querySelectorAll(`#ms-drop-${key} .ms-item:not(.ms-all) input`).forEach(cb => { cb.checked = false; });
@@ -963,21 +968,26 @@ function clearAllFilters() {
     if (allCb) allCb.checked = true;
     msUpdateLabel(key);
   });
+  // 2. Reset focus chip
   if (ACTIVE_FOCUS_CHIP) {
     document.getElementById(`focus-chip-${ACTIVE_FOCUS_CHIP}`).classList.remove('active-filter');
     ACTIVE_FOCUS_CHIP = null;
   }
+  // 3. Reset SKU search (state only, no rebuild)
+  SKU_LIST = new Set();
+  document.getElementById('sku-pills-wrap').style.display = 'none';
+  document.getElementById('sku-input-wrap').style.display = 'block';
   const si = document.getElementById('sku-search-input');
   if (si) si.value = '';
   const sh = document.getElementById('sku-search-hint');
   if (sh) sh.textContent = '';
-  skuClearList();
-  clearAllHeatmapSelections();
-  // Reset heatmap panel single-selects
-  ['filter-cat','filter-sub','filter-prov','filter-cat-n','filter-sub-n','filter-prov-n'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  // 4. Clear heatmap cell selections (state + visual only, no rebuild)
+  SELECTED_AOT_CELLS.clear();
+  SELECTED_N_CELLS.clear();
+  document.querySelectorAll('#heatmap-container .hm-cell').forEach(c => c.classList.remove('selected-aot'));
+  document.querySelectorAll('#n-vector-container .hm-cell').forEach(c => c.classList.remove('selected-n'));
+  updateSelectionInfo();
+  // 5. Single rebuild for everything
   rebuildAll();
 }
 
@@ -1084,6 +1094,13 @@ function buildHeatmap(data){
   }
   html+='</tbody></table>';
   cont.innerHTML=html;
+  // Re-apply selection visual state after re-render
+  if (SELECTED_AOT_CELLS.size > 0) {
+    cont.querySelectorAll('.hm-cell').forEach(cell => {
+      const k = `${cell.dataset.ddi}_${cell.dataset.ird}`;
+      if (SELECTED_AOT_CELLS.has(k)) cell.classList.add('selected-aot');
+    });
+  }
   buildLegend();
 }
 
@@ -1180,6 +1197,12 @@ function buildNVector(data){
     </div>`;
   }
   cont.innerHTML = html;
+  // Re-apply selection visual state after re-render
+  if (SELECTED_N_CELLS.size > 0) {
+    cont.querySelectorAll('.hm-cell').forEach(cell => {
+      if (SELECTED_N_CELLS.has(cell.dataset.ddi)) cell.classList.add('selected-n');
+    });
+  }
   buildNLegend();
 }
 
@@ -1217,10 +1240,21 @@ const MS_STATE = {
   cat2: { all: true, vals: new Set() },
   sub2: { all: true, vals: new Set() },
   prov2:{ all: true, vals: new Set() },
+  lin2: { all: true, vals: new Set() },
+  lin_n:{ all: true, vals: new Set() },
+  cat_n:{ all: true, vals: new Set() },
+  sub_n:{ all: true, vals: new Set() },
+  prov_n:{ all: true, vals: new Set() },
+  hm_cat: { all: true, vals: new Set() },
+  hm_lin: { all: true, vals: new Set() },
+  hm_sub: { all: true, vals: new Set() },
+  hm_prov:{ all: true, vals: new Set() },
   est:  { all: true, vals: new Set() },
 };
 // Sort state: { col: 'ddi'|'ird'|'dispo', dir: 'asc'|'desc' }
 let SORT_STATE = { col: 'ddi', dir: 'asc' };
+// Keys whose change should trigger rebuildAll() (affects heatmap display)
+const HEATMAP_FILTERS = new Set(['lin2','cat2','sub2','prov2','lin_n','cat_n','sub_n','prov_n','hm_cat','hm_lin','hm_sub','hm_prov']);
 
 function toggleMs(key) {
   const btn = document.getElementById(`ms-btn-${key}`);
@@ -1255,7 +1289,7 @@ function msToggle(key, val) {
   if (allCb) allCb.checked = st.all;
   // Update button label
   msUpdateLabel(key);
-  rebuildBreakdown();
+  if (HEATMAP_FILTERS.has(key)) rebuildAll(); else rebuildBreakdown();
 }
 
 function msSelectAll(key) {
@@ -1265,7 +1299,7 @@ function msSelectAll(key) {
   if (allCb) allCb.checked = true;
   document.querySelectorAll(`#ms-drop-${key} .ms-item:not(.ms-all) input`).forEach(cb => { cb.checked = false; });
   msUpdateLabel(key);
-  rebuildBreakdown();
+  if (HEATMAP_FILTERS.has(key)) rebuildAll(); else rebuildBreakdown();
 }
 
 function msUpdateLabel(key) {
@@ -1286,15 +1320,24 @@ function msPassFilter(key, val) {
   return st.vals.has(val);
 }
 
-function populateMsDynamic(key, values, labelFn) {
+function populateMsDynamic(key, values, labelFn, withSearch) {
   const drop = document.getElementById(`ms-drop-${key}`);
-  drop.innerHTML = `
-    <div class="ms-item ms-all" onclick="msSelectAll('${key}')"><input type="checkbox" id="ms-all-${key}" checked> Todos</div>
-    <div class="ms-divider"></div>`;
+  if (!drop) return;
+  const searchHtml = withSearch
+    ? `<div class="ms-search-wrap"><input class="ms-search" type="text" placeholder="Buscar…" oninput="msFilterDropdown('${key}',this.value)" onclick="event.stopPropagation()"></div>`
+    : '';
+  drop.innerHTML = `${searchHtml}<div class="ms-item ms-all" onclick="msSelectAll('${key}')"><input type="checkbox" id="ms-all-${key}" checked> Todos</div><div class="ms-divider"></div>`;
   for (const v of values) {
     const lbl = labelFn ? labelFn(v) : v;
     drop.innerHTML += `<div class="ms-item" onclick="msToggle('${key}','${v.replace(/'/g,"\\'")}')"><input type="checkbox" data-val="${v}"> ${lbl}</div>`;
   }
+}
+
+function msFilterDropdown(key, q) {
+  const lower = q.trim().toLowerCase();
+  document.querySelectorAll(`#ms-drop-${key} .ms-item:not(.ms-all)`).forEach(item => {
+    item.style.display = (!lower || item.textContent.trim().toLowerCase().includes(lower)) ? '' : 'none';
+  });
 }
 
 // ── SORT HELPERS ──────────────────────────────────────────────────
@@ -1377,15 +1420,10 @@ function skuClearList() {
 // ── BREAKDOWN ─────────────────────────────────────────────────────
 function getFilteredRows() {
   if (!ALL_DATA.length) return [];
-
-  // Estado: use multiselect if active, otherwise ACTIVE_ESTADOS (heatmap toggles)
   const estActive = !MS_STATE.est.all && MS_STATE.est.vals.size > 0;
 
-  // Heatmap accumulated cell selection takes priority when active
   if (hasHeatmapSelection()) {
     let rows = [];
-
-    // AOT cells: each selected cell = specific DDI + IRD bucket
     if (SELECTED_AOT_CELLS.size > 0) {
       const aotBase = ALL_DATA.filter(d => ACTIVE_ESTADOS.has(d.estado));
       const aotFiltered = aotBase.filter(d => {
@@ -1394,23 +1432,17 @@ function getFilteredRows() {
       });
       rows = rows.concat(aotFiltered);
     }
-
-    // N cells: each selected cell = Estado N + specific DDI bucket
     if (SELECTED_N_CELLS.size > 0) {
-      const nBase = ALL_DATA.filter(d => d.estado === 'N');
-      const fCatN  = document.getElementById('filter-cat-n').value;
-      const fSubN  = document.getElementById('filter-sub-n').value;
-      const fProvN = document.getElementById('filter-prov-n').value;
-      let nFiltered = nBase.filter(d => SELECTED_N_CELLS.has(nVectorCat(d)));
-      if (fCatN)  nFiltered = nFiltered.filter(d => d.cat  === fCatN);
-      if (fSubN)  nFiltered = nFiltered.filter(d => d.sub  === fSubN);
-      if (fProvN) nFiltered = nFiltered.filter(d => d.prov === fProvN);
+      let nFiltered = ALL_DATA.filter(d => d.estado === 'N' && SELECTED_N_CELLS.has(nVectorCat(d)));
+      nFiltered = nFiltered.filter(d => msPassFilter('lin_n',  d.lin  || ''));
+      nFiltered = nFiltered.filter(d => msPassFilter('cat_n',  d.cat  || ''));
+      nFiltered = nFiltered.filter(d => msPassFilter('sub_n',  d.sub  || ''));
+      nFiltered = nFiltered.filter(d => msPassFilter('prov_n', d.prov || ''));
       rows = rows.concat(nFiltered);
     }
-
-    // Apply switch + table-level multiselect filters on top
     rows = rows.filter(passesActivoSwitch);
     rows = rows.filter(d => msPassFilter('orig',  d.origen || ''));
+    rows = rows.filter(d => msPassFilter('lin2',  d.lin  || ''));
     rows = rows.filter(d => msPassFilter('cat2',  d.cat  || ''));
     rows = rows.filter(d => msPassFilter('sub2',  d.sub  || ''));
     rows = rows.filter(d => msPassFilter('prov2', d.prov || ''));
@@ -1419,28 +1451,16 @@ function getFilteredRows() {
 
   let rows = estActive
     ? ALL_DATA.filter(d => MS_STATE.est.vals.has(d.estado))
-    : ALL_DATA.slice(); // por defecto muestra A, O, T y N
+    : ALL_DATA.slice();
   rows = rows.filter(passesActivoSwitch);
-
-  // Heatmap-level cat/sub/prov (single-select, AOT only — skip if N is selected via est)
-  // These take priority over the table multiselects to avoid AND conflicts.
-  const _fCat  = !estActive ? document.getElementById('filter-cat').value  : '';
-  const _fSub  = !estActive ? document.getElementById('filter-sub').value  : '';
-  const _fProv = !estActive ? document.getElementById('filter-prov').value : '';
-  if (_fCat)  rows = rows.filter(d => d.cat  === _fCat);
-  if (_fSub)  rows = rows.filter(d => d.sub  === _fSub);
-  if (_fProv) rows = rows.filter(d => d.prov === _fProv);
-
-  // Multiselect filters — skip cat2/sub2/prov2 when the heatmap single-select is already set
-  // to prevent AND conflicts between the two filter levels.
   rows = rows.filter(d => msPassFilter('ddi',  ddiCat(d.ddi)));
   rows = rows.filter(d => msPassFilter('ird',  String(irdCat(d.ird) ?? '')));
   rows = rows.filter(d => { const f = skuFocus(d); return msPassFilter('foco', f || 'none'); });
   rows = rows.filter(d => msPassFilter('orig',  d.origen || ''));
-  if (!_fCat)  rows = rows.filter(d => msPassFilter('cat2',  d.cat  || ''));
-  if (!_fSub)  rows = rows.filter(d => msPassFilter('sub2',  d.sub  || ''));
-  if (!_fProv) rows = rows.filter(d => msPassFilter('prov2', d.prov || ''));
-
+  rows = rows.filter(d => msPassFilter('lin2',  d.lin  || ''));
+  rows = rows.filter(d => msPassFilter('cat2',  d.cat  || ''));
+  rows = rows.filter(d => msPassFilter('sub2',  d.sub  || ''));
+  rows = rows.filter(d => msPassFilter('prov2', d.prov || ''));
   return rows;
 }
 
@@ -1703,7 +1723,7 @@ function downloadReport() {
   const FOC_LABEL = { evac: '🔴 Evacuación', inj: '🔵 Inyección' };
 
   const wsData = [
-    ['Código','Material','Categoría','Sublínea','Proveedor','Origen','Estado',
+    ['Código','Material','Línea','Categoría','Sublínea','Proveedor','Origen','Estado',
      'Unidades Inv.','Estibas','DDI (días)','IRD','Rango DDI','Rango IRD','Foco',
      'Volumen Ocu. (m³)','Costo Inventario (COP)'],
   ];
@@ -1711,7 +1731,7 @@ function downloadReport() {
   for (const d of rows) {
     const irdIdx = irdCat(d.ird);
     wsData.push([
-      d.cod, d.mat, d.cat, d.sub, d.prov, d.origen, d.estado,
+      d.cod, d.mat, d.lin||'', d.cat, d.sub, d.prov, d.origen, d.estado,
       d.dispo ?? '',
       d.estibas != null ? d.estibas : 0,
       d.ddi  !== null ? d.ddi : '',
@@ -1729,7 +1749,7 @@ function downloadReport() {
 
   // Column widths
   ws['!cols'] = [
-    {wch:12},{wch:40},{wch:18},{wch:20},{wch:32},{wch:12},{wch:8},
+    {wch:12},{wch:40},{wch:18},{wch:18},{wch:20},{wch:32},{wch:12},{wch:8},
     {wch:12},{wch:10},{wch:8},{wch:12},{wch:22},{wch:14},
     {wch:18},{wch:22}
   ];
