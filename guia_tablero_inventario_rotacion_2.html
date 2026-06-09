@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía · Tablero Inventario × Rotación</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#ffffff; --tint:#f7f9fc; --tint2:#eef2f8;
+  --ink:#131829; --muted:#5d6b87; --dim:#94a0ba;
+  --line:#e6eaf1; --line2:#d6dde9;
+  --inj:#2563eb; --inj-soft:#eff4ff;
+  --evac:#dc2626; --evac-soft:#fef2f2;
+  --green:#059669; --green-soft:#ecfdf5;
+  --amber:#d97706; --amber-soft:#fffbeb;
+  --sans:'Plus Jakarta Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+
+/* ---------- Layout shell ---------- */
+.shell{display:grid;grid-template-columns:268px 1fr;min-height:100vh}
+nav.side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);padding:30px 22px;display:flex;flex-direction:column;background:var(--paper);overflow-y:auto}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:26px}
+.brand .mark{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,var(--inj),var(--evac) 130%);display:grid;place-items:center;flex-shrink:0;position:relative;overflow:hidden}
+.brand .mark::before{content:"";position:absolute;inset:0;background:
+  linear-gradient(135deg,transparent 49%,rgba(255,255,255,.55) 50%,transparent 51%)}
+.brand .mark span{font-family:var(--mono);font-weight:700;color:#fff;font-size:15px;z-index:1}
+.brand h1{font-size:14.5px;font-weight:800;letter-spacing:-.3px;line-height:1.2}
+.brand p{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:2px;letter-spacing:.4px}
+.nav-eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);text-transform:uppercase;margin:6px 0 10px 4px}
+.side a{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:var(--muted);font-size:13px;font-weight:500;padding:7px 10px;border-radius:7px;transition:.14s;border-left:2px solid transparent}
+.side a .n{font-family:var(--mono);font-size:10px;color:var(--dim);width:16px;flex-shrink:0}
+.side a:hover{background:var(--tint);color:var(--ink)}
+.side a.active{background:var(--tint2);color:var(--ink);font-weight:600;border-left-color:var(--inj)}
+.side a.active .n{color:var(--inj)}
+.side-foot{margin-top:auto;padding-top:20px;font-family:var(--mono);font-size:9.5px;color:var(--dim);line-height:1.7;border-top:1px solid var(--line);margin-top:24px}
+
+main{min-width:0;max-width:920px;padding:0 clamp(20px,5vw,64px)}
+
+/* ---------- Mobile nav ---------- */
+.topbar{display:none}
+
+/* ---------- Section base ---------- */
+section{position:relative;padding:58px 0;border-bottom:1px solid var(--line);scroll-margin-top:20px;transition:background .4s ease}
+section:last-of-type{border-bottom:none}
+
+/* reading highlight: blue→red fade over the section in view */
+section::before{
+  content:"";position:absolute;top:54px;bottom:54px;left:clamp(-26px,-4vw,-14px);width:4px;border-radius:4px;
+  background:linear-gradient(180deg,var(--inj),var(--evac));
+  opacity:0;transform:scaleY(.55);transform-origin:top center;
+  transition:opacity .4s ease,transform .4s ease;pointer-events:none}
+section.reading::before{opacity:1;transform:scaleY(1)}
+section.reading{background:linear-gradient(95deg,rgba(37,99,235,.06),rgba(220,38,38,.05) 52%,transparent 84%)}
+
+/* fixed author credit */
+.credit{position:fixed;right:18px;bottom:16px;z-index:40;font-family:var(--mono);font-size:10.5px;font-weight:600;
+  color:var(--muted);background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid var(--line);border-radius:20px;padding:7px 13px;box-shadow:0 4px 18px rgba(19,24,41,.1);
+  display:flex;align-items:center;gap:8px;pointer-events:none;user-select:none}
+.credit .dot{width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--inj),var(--evac));flex-shrink:0}
+.credit b{color:var(--ink);font-weight:700}
+@media (max-width:760px){.credit{right:12px;bottom:12px;font-size:10px;padding:6px 11px}}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--inj);display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.eyebrow::before{content:attr(data-n);font-weight:700;background:var(--inj-soft);color:var(--inj);padding:2px 7px;border-radius:5px;letter-spacing:0}
+h2{font-size:clamp(24px,3.4vw,33px);font-weight:800;letter-spacing:-.8px;line-height:1.1;margin-bottom:14px}
+h3{font-size:16px;font-weight:700;letter-spacing:-.2px;margin:26px 0 10px}
+.lede{font-size:16.5px;color:var(--muted);max-width:62ch}
+p{max-width:66ch}
+p+p{margin-top:12px}
+strong{font-weight:700;color:var(--ink)}
+.mono{font-family:var(--mono)}
+.k{font-family:var(--mono);font-size:.88em;background:var(--tint2);padding:1px 6px;border-radius:4px;color:var(--ink);font-weight:500}
+
+/* ---------- Hero ---------- */
+.hero{padding:clamp(54px,9vh,96px) 0 64px;border-bottom:1px solid var(--line)}
+.hero .tag{font-family:var(--mono);font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.hero .tag .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+.hero h1{font-size:clamp(32px,6vw,56px);font-weight:800;letter-spacing:-1.6px;line-height:1.02;margin-bottom:20px}
+.hero h1 em{font-style:normal;color:var(--inj);position:relative}
+.hero h1 .ev{color:var(--evac)}
+.hero .lede{font-size:clamp(16px,2.2vw,20px);max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.pill{font-family:var(--mono);font-size:11px;font-weight:500;padding:6px 12px;border-radius:20px;border:1px solid var(--line2);color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.pill b{color:var(--ink);font-weight:700}
+
+/* ---------- Interactive matrix ---------- */
+.matrix-stage{margin:36px 0 0;background:var(--tint);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,3vw,30px);display:grid;grid-template-columns:1fr 290px;gap:26px;align-items:start}
+.matrix-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.matrix-head .t{font-size:13px;font-weight:700}
+.matrix-head .h{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.mx-scroll{overflow-x:auto}
+table.mx{border-collapse:separate;border-spacing:5px;width:100%}
+table.mx th{font-family:var(--mono);font-weight:500;color:var(--muted);font-size:10px;text-align:center;padding:2px;white-space:nowrap}
+table.mx th.axis{color:var(--inj);font-weight:700;font-size:9px;letter-spacing:.8px}
+table.mx th.row{text-align:right;padding-right:8px;line-height:1.25}
+table.mx th.row b{display:block;font-size:11px;font-weight:700}
+table.mx th.row span{font-size:8.5px;color:var(--dim)}
+.cell{width:100%;aspect-ratio:1.45/1;min-width:46px;border-radius:8px;border:1px solid transparent;cursor:pointer;display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;transition:transform .12s,box-shadow .12s;background:#eef1f6;color:#b6c0d2;position:relative}
+.cell:hover,.cell:focus-visible{transform:translateY(-2px);box-shadow:0 6px 16px rgba(19,24,41,.14);outline:none;z-index:2}
+.cell.evac{background:var(--evac-soft);color:var(--evac);border-color:#f7c5c5}
+.cell.inj{background:var(--inj-soft);color:var(--inj);border-color:#c4d6ff}
+.cell.neutral{background:#f1f4f9;color:#8190ac;border-color:#e1e7f0}
+.cell.sel{box-shadow:0 0 0 3px var(--ink);transform:translateY(-2px)}
+.cell .ic{font-size:13px}
+
+.mx-info{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;min-height:230px;position:sticky;top:20px}
+.mx-info .badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:20px;display:inline-block;margin-bottom:12px}
+.mx-info .badge.evac{background:var(--evac-soft);color:var(--evac)}
+.mx-info .badge.inj{background:var(--inj-soft);color:var(--inj)}
+.mx-info .badge.neutral{background:var(--tint2);color:var(--muted)}
+.mx-info h4{font-size:17px;font-weight:800;letter-spacing:-.3px;margin-bottom:6px}
+.mx-info .coord{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:14px}
+.mx-info .coord b{color:var(--ink)}
+.mx-info p{font-size:13.5px;color:var(--muted);margin:0}
+.mx-info .action{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px}
+.mx-info .action b{font-size:10px;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:4px}
+.mx-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.mx-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:5px}
+
+/* ---------- Cards / grids ---------- */
+.grid{display:grid;gap:14px;margin-top:24px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;transition:.16s}
+.card:hover{border-color:var(--line2);box-shadow:0 4px 14px rgba(19,24,41,.05)}
+.card .ch{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.card .chip{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--tint2);color:var(--muted)}
+.card .chip.b{background:var(--inj-soft);color:var(--inj)}
+.card .chip.g{background:var(--green-soft);color:var(--green)}
+.card .chip.r{background:var(--evac-soft);color:var(--evac)}
+.card .chip.a{background:var(--amber-soft);color:var(--amber)}
+.card .chip.gy{background:var(--tint2);color:var(--muted)}
+.card h4{font-size:14.5px;font-weight:700;letter-spacing:-.2px}
+.card p{font-size:13px;color:var(--muted);max-width:none}
+.card .reads{margin-top:9px;font-size:12px;font-family:var(--mono);color:var(--ink);background:var(--tint);border-radius:7px;padding:7px 9px;line-height:1.5}
+
+/* feature block: qué/cómo/decisión */
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:22px}
+.feat>div{background:var(--paper);padding:16px 17px}
+.feat .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.feat p{font-size:13px;color:var(--ink);max-width:none;margin:0}
+.feat .lbl.q{color:var(--inj)} .feat .lbl.c{color:var(--green)} .feat .lbl.d{color:var(--evac)}
+
+/* badges for estado */
+.estados{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.est{display:flex;align-items:center;gap:11px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 15px;flex:1;min-width:180px}
+.est .b{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);font-weight:700;color:#fff;font-size:14px;flex-shrink:0}
+.est .b.A{background:var(--green)} .est .b.O{background:var(--inj)} .est .b.T{background:var(--amber)} .est .b.N{background:#64748b}
+.est .tx b{font-size:13.5px;display:block} .est .tx span{font-size:11.5px;color:var(--muted)}
+
+/* steps routine */
+.steps{counter-reset:s;margin-top:26px;display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.step{background:var(--paper);padding:18px 20px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+.step::before{counter-increment:s;content:counter(s,decimal-leading-zero);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--inj);background:var(--inj-soft);width:38px;height:38px;border-radius:9px;display:grid;place-items:center}
+.step h4{font-size:14.5px;font-weight:700;margin-bottom:3px}
+.step p{font-size:13px;color:var(--muted);max-width:none}
+
+/* glossary */
+.gloss{margin-top:22px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gloss dl{display:grid;grid-template-columns:170px 1fr}
+.gloss dt{font-family:var(--mono);font-size:12px;font-weight:700;padding:14px 16px;border-top:1px solid var(--line);border-right:1px solid var(--line);background:var(--tint);display:flex;align-items:center}
+.gloss dl:first-child dt,.gloss dl:first-child dd{border-top:none}
+.gloss dd{font-size:13px;color:var(--muted);padding:14px 18px;border-top:1px solid var(--line)}
+.gloss dd b{color:var(--ink)}
+
+.callout{display:flex;gap:13px;background:var(--amber-soft);border:1px solid #fde9bf;border-radius:11px;padding:15px 17px;margin-top:22px}
+.callout .i{font-size:18px;line-height:1.3}
+.callout p{font-size:13px;color:#7a4d08;max-width:none;margin:0}
+.callout b{color:#5a3905}
+
+.note{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:10px}
+
+/* Desktop: hide mobile-only elements */
+.topbar{display:none}
+.drawer{display:none}
+.backdrop{display:none}
+
+/* ---------- Responsive ---------- */
+@media (max-width:920px){
+  .matrix-stage{grid-template-columns:1fr}
+  .mx-info{position:static}
+}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  nav.side{display:none}
+  .topbar{display:flex;position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);align-items:center;justify-content:space-between;padding:12px 18px}
+  .topbar .brand{margin:0}
+  .topbar button{background:var(--ink);color:#fff;border:none;font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 13px;border-radius:8px;cursor:pointer}
+  .drawer{display:block;position:fixed;inset:0 0 0 auto;width:min(82vw,300px);background:var(--paper);z-index:60;transform:translateX(100%);transition:transform .22s;border-left:1px solid var(--line);padding:24px 20px;overflow-y:auto;box-shadow:-12px 0 40px rgba(19,24,41,.12)}
+  .drawer.open{transform:translateX(0)}
+  .drawer a{display:flex;gap:10px;padding:11px 8px;text-decoration:none;color:var(--ink);font-size:14px;font-weight:500;border-bottom:1px solid var(--line)}
+  .drawer a .n{font-family:var(--mono);font-size:11px;color:var(--inj);width:18px}
+  .backdrop{display:block;position:fixed;inset:0;background:rgba(19,24,41,.4);z-index:55;opacity:0;pointer-events:none;transition:.2s}
+  .backdrop.show{opacity:1;pointer-events:auto}
+  main{padding:0 20px}
+  .g2,.g3,.feat{grid-template-columns:1fr}
+  .gloss dl{grid-template-columns:1fr}
+  .gloss dt{border-right:none}
+}
+.hidedesk{display:none}
+@media (max-width:760px){.hidedesk{display:block}}
+</style>
+</head>
+<body>
+
+<!-- mobile top bar -->
+<div class="topbar">
+  <div class="brand"><div class="mark"><span>JR</span></div><div><h1 style="font-size:13px">Guía del Tablero</h1><p>Inventario × Rotación</p></div></div>
+  <button onclick="openDrawer()">Índice ☰</button>
+</div>
+<div class="backdrop" id="bk" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="nav-eyebrow">Secciones</div>
+  <a href="#principio" onclick="closeDrawer()"><span class="n">01</span>El principio: DDI × IRD</a>
+  <a href="#kpis" onclick="closeDrawer()"><span class="n">02</span>Barra de indicadores</a>
+  <a href="#focos" onclick="closeDrawer()"><span class="n">03</span>Focos y filtro de tránsito</a>
+  <a href="#matriz" onclick="closeDrawer()"><span class="n">04</span>La matriz (Heatmap)</a>
+  <a href="#inactivos" onclick="closeDrawer()"><span class="n">05</span>Inactivos · Estado N</a>
+  <a href="#rankings" onclick="closeDrawer()"><span class="n">06</span>Rankings</a>
+  <a href="#detalle" onclick="closeDrawer()"><span class="n">07</span>Detalle por SKU</a>
+  <a href="#carga" onclick="closeDrawer()"><span class="n">08</span>Cargar y actualizar datos</a>
+  <a href="#rutina" onclick="closeDrawer()"><span class="n">09</span>Rutina semanal</a>
+  <a href="#glosario" onclick="closeDrawer()"><span class="n">10</span>Glosario</a>
+</aside>
+
+<div class="shell">
+  <!-- desktop sidebar -->
+  <nav class="side">
+    <div class="brand"><div class="mark"><span>JR</span></div><div><h1>Guía del Tablero</h1><p>INVENTARIO × ROTACIÓN</p></div></div>
+    <div class="nav-eyebrow">Recorrido</div>
+    <a href="#principio"><span class="n">01</span>El principio: DDI × IRD</a>
+    <a href="#kpis"><span class="n">02</span>Barra de indicadores</a>
+    <a href="#focos"><span class="n">03</span>Focos y tránsito</a>
+    <a href="#matriz"><span class="n">04</span>La matriz (Heatmap)</a>
+    <a href="#inactivos"><span class="n">05</span>Inactivos · Estado N</a>
+    <a href="#rankings"><span class="n">06</span>Rankings</a>
+    <a href="#detalle"><span class="n">07</span>Detalle por SKU</a>
+    <a href="#carga"><span class="n">08</span>Cargar datos</a>
+    <a href="#rutina"><span class="n">09</span>Rutina semanal</a>
+    <a href="#glosario"><span class="n">10</span>Glosario</a>
+    <div class="side-foot">Tablero Seguimiento SAP<br>CENDIS · Capacity Management<br>Dirección de Categoría</div>
+  </nav>
+
+  <main>
+    <!-- HERO -->
+    <header class="hero" id="top">
+      <div class="tag"><span class="dot"></span>Manual de uso · Dirección de Categoría</div>
+      <h1>Qué <em>inyectar</em>, qué <span class="ev">evacuar</span>, y por qué.</h1>
+      <p class="lede">El tablero cruza dos preguntas en una sola vista: <strong>¿cuántos días me dura el inventario?</strong> y <strong>¿qué tan rápido rota?</strong>. El cruce te dice exactamente dónde actuar. Esta guía te lleva por cada panel en el mismo orden en que lo lees en pantalla.</p>
+      <div class="hero-meta">
+        <span class="pill">Eje horizontal <b>DDI</b> · días de inventario</span>
+        <span class="pill">Eje vertical <b>IRD</b> · índice de rotación</span>
+        <span class="pill">Color <b>=</b> acción comercial</span>
+      </div>
+
+      <!-- INTERACTIVE MATRIX -->
+      <div class="matrix-stage">
+        <div>
+          <div class="matrix-head">
+            <span class="t">Toca una celda para leerla</span>
+            <span class="h">IRD (filas) × DDI (columnas)</span>
+          </div>
+          <div class="mx-scroll">
+            <table class="mx" id="mx">
+              <thead>
+                <tr>
+                  <th class="axis">IRD \ DDI</th>
+                  <th>⚠ Agot.</th><th>1–15 d</th><th>16–30 d</th><th>31–60 d</th><th>61–90 d</th><th>90+ d</th>
+                </tr>
+              </thead>
+              <tbody id="mxbody"></tbody>
+            </table>
+          </div>
+          <div class="mx-legend">
+            <span><i style="background:var(--evac)"></i>Evacuación</span>
+            <span><i style="background:var(--inj)"></i>Inyección</span>
+            <span><i style="background:#8190ac"></i>Neutral / saludable</span>
+          </div>
+        </div>
+        <div class="mx-info" id="mxinfo" aria-live="polite">
+          <span class="badge neutral">Empieza aquí</span>
+          <h4>Lee el tablero en 10 segundos</h4>
+          <div class="coord">Pasa el cursor o toca cualquier celda</div>
+          <p>Cada celda es un grupo de productos con la misma cobertura (DDI) y la misma velocidad (IRD). El color te dice qué hacer con ellos sin tener que mirar un solo número.</p>
+        </div>
+      </div>
+      <p class="note">Réplica interactiva de la matriz real del tablero. Las zonas de color reproducen exactamente la lógica de focos del sistema.</p>
+    </header>
+
+    <!-- 01 PRINCIPIO -->
+    <section id="principio">
+      <div class="eyebrow" data-n="01">El principio que ordena todo</div>
+      <h2>Dos ejes, tres decisiones</h2>
+      <p class="lede">Todo el tablero gira sobre el cruce de dos métricas. Si entiendes estos dos ejes, entiendes la herramienta completa.</p>
+
+      <div class="grid g2">
+        <div class="card">
+          <div class="ch"><span class="chip b">EJE → DDI</span></div>
+          <h4>Días de Inventario</h4>
+          <p>Cuántos días dura el stock actual al ritmo de venta. Es la <strong>cobertura</strong>. A la izquierda, riesgo de quiebre; a la derecha, sobre-stock que ocupa espacio y capital.</p>
+          <div class="reads">Agotado → 1–15 → 16–30 → 31–60 → 61–90 → 90+</div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="chip g">EJE ↑ IRD</span></div>
+          <h4>Índice de Rotación</h4>
+          <p>Qué tan rápido se mueve el producto. Es la <strong>velocidad</strong>. Abajo rota lento; arriba rota tan rápido que se queda corto de inventario.</p>
+          <div class="reads">Lenta 0–0.3 · Media 0.3–1 · Alta 1–2 · Ultra &gt;2</div>
+        </div>
+      </div>
+
+      <h3>Las tres zonas de acción</h3>
+      <div class="grid g3">
+        <div class="card">
+          <div class="ch"><span class="chip r">🔴 Evacuación</span></div>
+          <h4>Sobra cobertura, falta venta</h4>
+          <p>Mucha cobertura y baja rotación. Capital y espacio inmovilizados en CENDIS. <strong>Prioridad de salida</strong>: promoción, traslado o liquidación.</p>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="chip b">🔵 Inyección</span></div>
+          <h4>Sobra venta, falta stock</h4>
+          <p>Rotación alta o ultra con inventario crítico o agotado. Estás dejando de vender. <strong>Reposición urgente</strong>.</p>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="chip gy">⬜ Neutral</span></div>
+          <h4>En equilibrio</h4>
+          <p>Cobertura y rotación alineadas. No requieren acción inmediata; se vigilan, no se intervienen.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <span class="i">💡</span>
+        <p><b>Excepción de importados.</b> Un producto <b>importado</b> con 90+ días de inventario <b>no</b> se marca como evacuación: por su tiempo de tránsito, esa cobertura alta es la deseada. El tablero ya aplica esta regla automáticamente.</p>
+      </div>
+    </section>
+
+    <!-- 02 KPIs -->
+    <section id="kpis">
+      <div class="eyebrow" data-n="02">Lo primero que ves</div>
+      <h2>Barra de indicadores</h2>
+      <p class="lede">La fila superior resume el portafolio en siete cifras. Es tu titular del día antes de entrar al detalle.</p>
+      <div class="grid g3">
+        <div class="card"><div class="ch"><span class="chip b">Total SKUs</span></div><h4>El portafolio completo</h4><p>Cuántas referencias hay en el archivo cargado, sin filtros.</p></div>
+        <div class="card"><div class="ch"><span class="chip g">Activos · A/O/T</span></div><h4>Lo que está vivo</h4><p>SKUs en estado Activo, Novedad o Testeo, con su porcentaje del total.</p></div>
+        <div class="card"><div class="ch"><span class="chip gy">Inactivos · N</span></div><h4>Lo que dejó de moverse</h4><p>Referencias descontinuadas. Todas son candidatas a salida.</p></div>
+        <div class="card"><div class="ch"><span class="chip a">DDI Promedio</span></div><h4>Cobertura media</h4><p>Días de inventario promedio del portafolio. Tu termómetro general de exceso o escasez.</p></div>
+        <div class="card"><div class="ch"><span class="chip r">⚠ Agotados</span></div><h4>Ventas que no ocurren</h4><p>SKUs sin disponibilidad. Cada uno es una venta perdida si tiene demanda.</p></div>
+        <div class="card"><div class="ch"><span class="chip b">🔵 Foco Inyección</span></div><h4>A reponer</h4><p>Cuántas referencias caen en zona de inyección.</p></div>
+      </div>
+      <div class="grid g3" style="margin-top:14px">
+        <div class="card"><div class="ch"><span class="chip r">🔴 Foco Evacuación</span></div><h4>A liberar</h4><p>Cuántas referencias caen en zona de evacuación. El contrapeso del indicador anterior.</p></div>
+      </div>
+    </section>
+
+    <!-- 03 FOCOS -->
+    <section id="focos">
+      <div class="eyebrow" data-n="03">Atajos de decisión</div>
+      <h2>Focos y filtro de tránsito</h2>
+      <p class="lede">Debajo de los indicadores hay dos botones-foco y un interruptor. Son los accesos rápidos a las dos acciones que más importan.</p>
+
+      <div class="grid g2">
+        <div class="card">
+          <div class="ch"><span class="chip r">🔴 Evacuación</span></div>
+          <h4>Botón-foco de salida</h4>
+          <p>Pasa el cursor para ver qué celdas lo componen (61–90 lenta y media, 90+ lenta/media/alta, 31–60 lenta). Haz clic y la <strong>tabla de detalle</strong> se filtra solo a esos SKUs.</p>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="chip b">🔵 Inyección</span></div>
+          <h4>Botón-foco de reposición</h4>
+          <p>Reúne las celdas de agotado/poca cobertura con rotación alta o ultra. Un clic deja en la tabla solo lo que urge reponer.</p>
+        </div>
+      </div>
+
+      <h3>Interruptor «Solo en tránsito»</h3>
+      <p>Oculta el ruido: deja fuera los SKUs <strong>sin movimiento</strong> (IRD = 0) que tampoco tienen disponibilidad ni entregas entrantes. Lo que queda es el portafolio que realmente está operando. El contador a su lado te dice cuántas referencias permanecen visibles.</p>
+    </section>
+
+    <!-- 04 MATRIZ -->
+    <section id="matriz">
+      <div class="eyebrow" data-n="04">El corazón del tablero</div>
+      <h2>La matriz · Heatmap DDI × IRD</h2>
+      <p class="lede">Aquí vive el cruce que viste en la portada, aplicado a los estados Activo, Novedad y Testeo. Cada celda concentra todos los SKUs con esa combinación de cobertura y rotación.</p>
+
+      <div class="feat">
+        <div><div class="lbl q">Qué es</div><p>Una rejilla de 4 filas (rotación) × 6 columnas (días de inventario). El color marca la zona de acción y su intensidad refleja el volumen acumulado.</p></div>
+        <div><div class="lbl c">Cómo se lee</div><p>Pasa el cursor sobre una celda y aparece un detalle: número de SKUs, % del total, unidades, estibas, volumen ocupado y costo de inventario.</p></div>
+        <div><div class="lbl d">Qué habilita</div><p>Haz clic en una celda y la tabla de detalle se filtra a esos SKUs. Puedes seleccionar varias celdas a la vez para construir tu propia lista de trabajo.</p></div>
+      </div>
+
+      <h3>Controles del panel</h3>
+      <div class="grid g2">
+        <div class="card"><div class="ch"><span class="chip gy">Filtros</span></div><h4>Categoría · Línea · Sublínea · Proveedor</h4><p>Acotan la matriz a tu universo. Selección múltiple en cada menú; «Todas» limpia el filtro.</p></div>
+        <div class="card"><div class="ch"><span class="chip g">Estado A / O / T</span></div><h4>Qué población miras</h4><p>Tres botones encienden o apagan Activos, Novedades y Testeo. Vienen activos por defecto.</p></div>
+      </div>
+      <div class="callout">
+        <span class="i">🎨</span>
+        <p><b>Intensidad del color.</b> Dentro de cada zona, un tono más fuerte significa <b>más volumen concentrado</b> en esa celda. Una celda roja intensa es donde más capital tienes atrapado; una azul intensa, donde más venta estás dejando de capturar.</p>
+      </div>
+    </section>
+
+    <!-- 05 INACTIVOS -->
+    <section id="inactivos">
+      <div class="eyebrow" data-n="05">El panel gemelo</div>
+      <h2>Inactivos · Estado N</h2>
+      <p class="lede">Las referencias descontinuadas tienen su propio panel, porque la decisión ya no es «inyectar o no»: <strong>todas son foco de evacuación</strong>. Aquí solo importa cuánto pesan y cuánto ocupan.</p>
+      <div class="feat">
+        <div><div class="lbl q">Qué es</div><p>Una distribución de los SKUs inactivos por días de inventario, en escala roja. Sin eje de rotación, porque ya no rotan.</p></div>
+        <div><div class="lbl c">Cómo se lee</div><p>El tooltip muestra unidades, estibas, volumen y costo. Hay una celda ámbar especial para los que marcan <span class="k">DDI 0</span> pero todavía tienen stock físico.</p></div>
+        <div><div class="lbl d">Qué habilita</div><p>Filtros propios de Línea, Categoría, Sublínea y Proveedor para priorizar qué inactivos sacar primero.</p></div>
+      </div>
+    </section>
+
+    <!-- 06 RANKINGS -->
+    <section id="rankings">
+      <div class="eyebrow" data-n="06">Dónde se concentra el peso</div>
+      <h2>Rankings</h2>
+      <p class="lede">Tres listas ordenadas te dicen quién acumula más, según la dimensión que elijas.</p>
+      <div class="grid g3">
+        <div class="card"><div class="ch"><span class="chip gy">📊 Por Sublínea</span></div><h4>Concentración por categoría fina</h4><p>Qué sublíneas pesan más en el portafolio filtrado.</p></div>
+        <div class="card"><div class="ch"><span class="chip gy">🏭 Por Proveedor</span></div><h4>Exposición por origen comercial</h4><p>Qué proveedores concentran más inventario o referencias.</p></div>
+        <div class="card"><div class="ch"><span class="chip gy">🌐 Por Origen</span></div><h4>Nacional vs. Importado</h4><p>El reparto entre producción local e importación.</p></div>
+      </div>
+      <div class="callout">
+        <span class="i">🔁</span>
+        <p><b>Cambia la métrica.</b> Cada ranking tiene un selector <b>SKUs / Uds / Estibas</b>. La misma sublínea puede ser pequeña en referencias pero enorme en estibas: ahí está la diferencia entre un problema de surtido y uno de espacio físico.</p>
+      </div>
+    </section>
+
+    <!-- 07 DETALLE -->
+    <section id="detalle">
+      <div class="eyebrow" data-n="07">El nivel de trabajo</div>
+      <h2>Detalle por SKU</h2>
+      <p class="lede">La tabla final es donde aterriza la decisión: referencia por referencia, lista para exportar y accionar.</p>
+
+      <h3>Buscador de SKU</h3>
+      <p>Busca por <strong>código o nombre</strong>. Y si copias una columna de códigos desde Excel y la pegas, el buscador entra en <strong>modo lista</strong>: cada código se vuelve una etiqueta y la tabla muestra justo ese conjunto. Ideal para revisar una selección que traes de otra parte.</p>
+
+      <h3>Filtros disponibles</h3>
+      <p>Combinables entre sí: <span class="k">DDI</span>, <span class="k">IRD</span>, <span class="k">Foco</span>, <span class="k">Origen</span>, <span class="k">Categoría</span>, <span class="k">Línea</span>, <span class="k">Sublínea</span>, <span class="k">Proveedor</span> y <span class="k">Estado</span>. El botón <strong>Limpiar filtros</strong> regresa todo a cero.</p>
+
+      <h3>Las columnas de la tabla</h3>
+      <div class="grid g3">
+        <div class="card"><h4>Código · Material</h4><p>Identificador y nombre de la referencia.</p></div>
+        <div class="card"><h4>Categoría · Sublínea</h4><p>Su posición en la jerarquía de producto.</p></div>
+        <div class="card"><h4>Proveedor · Origen</h4><p>Quién la fabrica y si es nacional o importada.</p></div>
+        <div class="card"><h4>Estado</h4><p>A, O, T o N (ver glosario).</p></div>
+        <div class="card"><h4>Unid. Inv · Estibas</h4><p>Unidades disponibles y pallets que ocupan. Un ⚠ rojo marca agotados.</p></div>
+        <div class="card"><h4>DDI · IRD · Foco</h4><p>Las dos métricas clave y la zona de acción resultante.</p></div>
+      </div>
+      <p style="margin-top:16px">Las columnas <strong>Unid. Inv, Estibas, DDI e IRD se ordenan</strong> con un clic en su encabezado. El botón <strong>Descargar reporte</strong> exporta a Excel exactamente lo que tengas filtrado en pantalla, no el archivo completo.</p>
+    </section>
+
+    <!-- 08 CARGA -->
+    <section id="carga">
+      <div class="eyebrow" data-n="08">Antes de empezar</div>
+      <h2>Cargar y actualizar datos</h2>
+      <p class="lede">El tablero no inventa cifras: trabaja sobre el archivo que cargas. Tienes tres formas de hacerlo.</p>
+      <div class="grid g3">
+        <div class="card"><div class="ch"><span class="chip b">↻ Actualizar</span></div><h4>Desde el repositorio</h4><p>Trae automáticamente el archivo más reciente publicado en el repositorio del equipo. La vía habitual del día a día.</p></div>
+        <div class="card"><div class="ch"><span class="chip gy">📁 Manual</span></div><h4>Tu propio archivo</h4><p>Selecciona un Excel desde tu equipo para analizar un corte puntual.</p></div>
+        <div class="card"><div class="ch"><span class="chip gy">Arrastrar</span></div><h4>Soltar el archivo</h4><p>También puedes arrastrar el archivo a la zona de carga.</p></div>
+      </div>
+      <p style="margin-top:16px">La <strong>fecha del archivo</strong> aparece en la cabecera: confírmala siempre antes de tomar una decisión, para saber sobre qué corte estás trabajando.</p>
+    </section>
+
+    <!-- 09 RUTINA -->
+    <section id="rutina">
+      <div class="eyebrow" data-n="09">Cómo sacarle provecho</div>
+      <h2>Rutina semanal sugerida</h2>
+      <p class="lede">Una secuencia de cinco pasos para convertir el tablero en decisiones, no solo en observación.</p>
+      <div class="steps">
+        <div class="step"><div><h4>Actualiza y lee el titular</h4><p>Pulsa «Actualizar», verifica la fecha del archivo y mira la barra de indicadores. ¿Subió el DDI promedio? ¿Crecieron los agotados?</p></div></div>
+        <div class="step"><div><h4>Filtra a tu categoría</h4><p>En la matriz, acota Categoría/Línea para mirar solo tu universo. Activa «Solo en tránsito» si quieres quitar el ruido.</p></div></div>
+        <div class="step"><div><h4>Ataca la inyección primero</h4><p>Pulsa el foco 🔵, ordena el detalle por IRD y prioriza reposición: es venta que está ocurriendo y se está quedando corta.</p></div></div>
+        <div class="step"><div><h4>Planea la evacuación</h4><p>Pulsa el foco 🔴 y el panel de inactivos. Ordena por estibas para liberar primero lo que más espacio ocupa en CENDIS.</p></div></div>
+        <div class="step"><div><h4>Exporta y comparte</h4><p>Deja en la tabla solo los SKUs accionables y usa «Descargar reporte» para llevar la lista a compras o a la reunión de S&amp;OP.</p></div></div>
+      </div>
+    </section>
+
+    <!-- 10 GLOSARIO -->
+    <section id="glosario">
+      <div class="eyebrow" data-n="10">Para tener a mano</div>
+      <h2>Glosario</h2>
+      <div class="estados">
+        <div class="est"><div class="b A">A</div><div class="tx"><b>Activo</b><span>En venta y operación plena</span></div></div>
+        <div class="est"><div class="b O">O</div><div class="tx"><b>Novedad</b><span>Lanzamiento reciente</span></div></div>
+        <div class="est"><div class="b T">T</div><div class="tx"><b>Testeo</b><span>En prueba comercial</span></div></div>
+        <div class="est"><div class="b N">N</div><div class="tx"><b>Inactivo</b><span>Descontinuado · a evacuar</span></div></div>
+      </div>
+      <div class="gloss">
+        <dl><dt>DDI</dt><dd><b>Días de Inventario.</b> Cuántos días dura el stock al ritmo de venta. Bajo = riesgo de quiebre; alto = sobre-stock.</dd></dl>
+        <dl><dt>IRD</dt><dd><b>Índice de Rotación.</b> Velocidad a la que se mueve la referencia. Lenta (0–0.3), Media (0.3–1), Alta (1–2), Ultra (&gt;2).</dd></dl>
+        <dl><dt>Foco Evacuación</dt><dd>Cruce de alta cobertura con baja rotación. Prioridad de salida para liberar capital y espacio.</dd></dl>
+        <dl><dt>Foco Inyección</dt><dd>Cruce de rotación alta/ultra con inventario crítico o agotado. Requiere reposición urgente.</dd></dl>
+        <dl><dt>Estibas</dt><dd>Cantidad de pallets que ocupa el inventario. Tu medida de presión sobre el espacio físico.</dd></dl>
+        <dl><dt>Origen</dt><dd><b>Nacional</b> 🇨🇴 o <b>Importado</b> 🌐. Cambia la lógica: lo importado tolera más cobertura por su tiempo de tránsito.</dd></dl>
+        <dl><dt>Agotado</dt><dd>DDI de cero o negativo. Sin disponibilidad para vender.</dd></dl>
+        <dl><dt>CENDIS</dt><dd>Centro de distribución. El espacio que la evacuación busca liberar.</dd></dl>
+      </div>
+      <p class="note" style="margin-top:24px">Guía de uso del Tablero Seguimiento SAP · Inventario × Rotación — Dirección de Categoría · Muebles Jamar</p>
+    </section>
+
+    <footer style="padding:32px 0 48px;border-top:1px solid var(--line);margin-top:8px;display:flex;align-items:center;justify-content:center">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--dim)">Creado por: <strong style="color:var(--ink);font-weight:700">Said Yanett</strong></span>
+    </footer>
+  </main>
+</div>
+
+<div class="credit"><span class="dot"></span>Creado por: <b>Said Yanett</b></div>
+
+<script>
+/* ---- Build interactive matrix ---- */
+const IRD=[{b:'Ultra',r:'>2'},{b:'Alta',r:'1–2'},{b:'Media',r:'0.3–1'},{b:'Lenta',r:'0–0.3'}]; // top→bottom display
+// internal row index in source: 0 Lenta,1 Media,2 Alta,3 Ultra
+const DDI=['Agotado','1-15','16-30','31-60','61-90','90+'];
+const EVAC=new Set(['61-90_0','61-90_1','90+_0','90+_1','90+_2','31-60_0']);
+const INJ =new Set(['Agotado_2','Agotado_3','1-15_2','1-15_3','16-30_3']);
+const ROWIDX={'Ultra':3,'Alta':2,'Media':1,'Lenta':0};
+const LABELS={'Agotado':'Agotado','1-15':'1–15 días','16-30':'16–30 días','31-60':'31–60 días','61-90':'61–90 días','90+':'90+ días'};
+
+const COPY={
+  evac:{badge:'evac',title:'Foco de Evacuación',
+    body:'Tienes más cobertura de la que la rotación justifica. Capital y estibas inmovilizados en CENDIS.',
+    action:'Priorizar salida: promoción, traslado o liquidación.'},
+  inj:{badge:'inj',title:'Foco de Inyección',
+    body:'La demanda supera al inventario disponible. Cada día sin stock es venta que no ocurre.',
+    action:'Reposición urgente. Revisa órdenes de compra y tránsito.'},
+  neutral:{badge:'neutral',title:'Zona neutral',
+    body:'Cobertura y rotación razonablemente alineadas. No requiere intervención inmediata.',
+    action:'Vigilar. Dejar que el surtido siga su curso.'}
+};
+
+const body=document.getElementById('mxbody');
+IRD.forEach(row=>{
+  const tr=document.createElement('tr');
+  const th=document.createElement('th');th.className='row';
+  th.innerHTML=`<b>${row.b}</b><span>IRD ${row.r}</span>`;tr.appendChild(th);
+  const ridx=ROWIDX[row.b];
+  DDI.forEach(dc=>{
+    const key=`${dc}_${ridx}`;
+    let zone='neutral',ic='';
+    if(EVAC.has(key)){zone='evac';ic='🔴';}
+    else if(INJ.has(key)){zone='inj';ic='🔵';}
+    const td=document.createElement('td');
+    const cell=document.createElement('button');
+    cell.className='cell '+zone;
+    cell.type='button';
+    cell.dataset.zone=zone;cell.dataset.ddi=dc;cell.dataset.ird=row.b;cell.dataset.irdr=row.r;
+    cell.innerHTML=`<span class="ic">${ic||'·'}</span>`;
+    cell.setAttribute('aria-label',`${LABELS[dc]}, rotación ${row.b}, zona ${zone}`);
+    cell.addEventListener('mouseenter',()=>render(cell));
+    cell.addEventListener('focus',()=>render(cell));
+    cell.addEventListener('click',()=>{document.querySelectorAll('.cell.sel').forEach(c=>c.classList.remove('sel'));cell.classList.add('sel');render(cell);});
+    td.appendChild(cell);tr.appendChild(td);
+  });
+  body.appendChild(tr);
+});
+
+const info=document.getElementById('mxinfo');
+function render(cell){
+  const z=cell.dataset.zone, c=COPY[z];
+  info.innerHTML=`
+    <span class="badge ${c.badge}">${z==='neutral'?'Sin foco':z}</span>
+    <h4>${c.title}</h4>
+    <div class="coord"><b>${LABELS[cell.dataset.ddi]}</b> · rotación <b>${cell.dataset.ird}</b> (IRD ${cell.dataset.irdr})</div>
+    <p>${c.body}</p>
+    <div class="action"><b>Acción</b>${c.action}</div>`;
+}
+
+/* ---- Scroll-spy ---- */
+const links=[...document.querySelectorAll('nav.side a')];
+const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting){
+    links.forEach(l=>l.classList.remove('active'));
+    const a=map.get(e.target.id);if(a)a.classList.add('active');
+    document.querySelectorAll('section.reading').forEach(s=>s.classList.remove('reading'));
+    e.target.classList.add('reading');
+  }});
+},{rootMargin:'-45% 0px -50% 0px'});
+document.querySelectorAll('section[id]').forEach(s=>obs.observe(s));
+
+/* ---- Mobile drawer ---- */
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('bk').classList.add('show');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('bk').classList.remove('show');}
+</script>
+</body>
+</html>
